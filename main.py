@@ -1,3 +1,8 @@
+# Change this:
+model="gemini-2.5-flash"
+
+# To this:
+model="gemini-3.8-flash"
 import os
 import json
 import urllib.parse
