@@ -1,5 +1,5 @@
 # Change this:
-model="gemini-2.5-flash"
+model="gemini-3.8-flash"
 
 # To this:
 model="gemini-3.8-flash"
@@ -69,7 +69,7 @@ def curate_stories(raw_stories: list[dict]) -> list[dict]:
     """
 
     response = client.models.generate_content(
-        model="gemini-2.5-flash",
+        model="gemini-3.8-flash",
         contents=prompt,
         config=types.GenerateContentConfig(
             response_mime_type="application/json"
