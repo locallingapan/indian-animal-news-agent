@@ -40,6 +40,7 @@ def fetch_google_news_stories(query: str, max_results: int = 15) -> list[dict]:
 
 
 def curate_stories(raw_stories: list[dict]) -> list[dict]:
+    import time
     prompt = f"""
     You are an expert wildlife news curator focusing on animal stories in India.
     Evaluate the provided news stories and return ONLY a JSON list of qualifying stories.
@@ -68,15 +69,24 @@ def curate_stories(raw_stories: list[dict]) -> list[dict]:
     ]
     """
 
-    response = client.models.generate_content(
-        model="gemini-3.8-flash",
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            response_mime_type="application/json"
-        )
-    )
+    models_to_try = ["gemini-3.8-flash", "gemini-2.0-flash", "gemini-1.5-flash"]
     
-    return json.loads(response.text)
+    for model_name in models_to_try:
+        for attempt in range(3):
+            try:
+                response = client.models.generate_content(
+                    model=model_name,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json"
+                    )
+                )
+                return json.loads(response.text)
+            except Exception as e:
+                print(f"Attempt {attempt + 1} with {model_name} failed: {e}")
+                time.sleep(3)
+    
+    raise Exception("All Gemini models and retry attempts failed due to service unavailability.")
 
 
 def send_email_digest(curated_stories: list[dict]):
