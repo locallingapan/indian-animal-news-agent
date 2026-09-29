@@ -1,10 +1,6 @@
-# Change this:
-model="gemini-3.8-flash"
-
-# To this:
-model="gemini-3.8-flash"
 import os
 import json
+import time
 import urllib.parse
 import smtplib
 from email.mime.multipart import MIMEMultipart
@@ -40,7 +36,6 @@ def fetch_google_news_stories(query: str, max_results: int = 15) -> list[dict]:
 
 
 def curate_stories(raw_stories: list[dict]) -> list[dict]:
-    import time
     prompt = f"""
     You are an expert wildlife news curator focusing on animal stories in India.
     Evaluate the provided news stories and return ONLY a JSON list of qualifying stories.
@@ -69,24 +64,27 @@ def curate_stories(raw_stories: list[dict]) -> list[dict]:
     ]
     """
 
-    models_to_try = ["gemini-3.8-flash", "gemini-2.0-flash", "gemini-1.5-flash"]
-    
-    for model_name in models_to_try:
-        for attempt in range(3):
-            try:
-                response = client.models.generate_content(
-                    model=model_name,
-                    contents=prompt,
-                    config=types.GenerateContentConfig(
-                        response_mime_type="application/json"
-                    )
+    # Retries with exponential backoff for 503 capacity limits
+    max_retries = 5
+    for attempt in range(max_retries):
+        try:
+            print(f"Attempting Gemini call with gemini-3.8-flash (Attempt {attempt + 1}/{max_retries})...")
+            response = client.models.generate_content(
+                model="gemini-3.8-flash",
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json"
                 )
-                return json.loads(response.text)
-            except Exception as e:
-                print(f"Attempt {attempt + 1} with {model_name} failed: {e}")
-                time.sleep(3)
-    
-    raise Exception("All Gemini models and retry attempts failed due to service unavailability.")
+            )
+            return json.loads(response.text)
+        except Exception as e:
+            print(f"Attempt {attempt + 1} failed with error: {e}")
+            if attempt < max_retries - 1:
+                wait_time = (attempt + 1) * 10
+                print(f"Waiting {wait_time} seconds before retrying...")
+                time.sleep(wait_time)
+            else:
+                raise e
 
 
 def send_email_digest(curated_stories: list[dict]):
